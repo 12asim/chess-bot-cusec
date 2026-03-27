@@ -53,3 +53,22 @@ print(m)
 
 bot.update(m)         # apply that move
 print(bot())          # updated FEN
+```
+
+## Running Tests
+
+```bash
+python tests.py
+```
+
+## Notes
+
+- FEN is used to represent the full board state.
+- UCI notation is used for move input and output, for example:
+  - `e2e4`
+  - `g1f3`
+  - `g7g8q`
+
+## Goal
+
+The goal of this project was to build a working chess bot from scratch that satisfies the competition requirements while keeping the code modular and testable.
