@@ -6,6 +6,7 @@ from opening_book import get_book_move
 class ChessBot:
     def __init__(self, fen=START_FEN):
         self.board = Board(fen)
+        self.move_history = []
         
     def to_fen(self):
         return self.board.to_fen()
@@ -32,8 +33,16 @@ class ChessBot:
         if move_tuple not in legals:
             raise ValueError(f"Illegal move: {uci_move}")
             
-        self.board.apply_move(move_tuple)
+        undo_info = self.board.make_move(move_tuple)
+        self.move_history.append((move_tuple, undo_info))
         
+    def undo_last_move(self):
+        if self.move_history:
+            move_tuple, undo_info = self.move_history.pop()
+            self.board.unmake_move(move_tuple, undo_info)
+            return True
+        return False
+
     def move(self, depth=2, time_limit=None):
         book_move = get_book_move(self.board)
         if book_move:

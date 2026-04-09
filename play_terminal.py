@@ -30,7 +30,7 @@ def game_over_message(bot):
 def main():
     print("Python Chess Bot Terminal")
     print("Enter moves in UCI format like e2e4, g1f3, g7g8q")
-    print("Commands: board, fen, legal, quit")
+    print("Commands: board, fen, legal, undo, quit")
     print()
 
     side = input("Play as white or black? (w/b): ").strip().lower()
@@ -71,6 +71,15 @@ def main():
                         move += promo.lower()
                     legal_uci.append(move)
                 print("Legal moves:", " ".join(legal_uci))
+                continue
+            elif user_input == "undo":
+                if len(bot.move_history) >= 2:
+                    bot.undo_last_move()
+                    bot.undo_last_move()
+                elif len(bot.move_history) == 1:
+                    bot.undo_last_move()
+                else:
+                    print("Nothing to undo.")
                 continue
 
             try:
