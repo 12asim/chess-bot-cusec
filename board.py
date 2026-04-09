@@ -17,6 +17,8 @@ class Board:
 
         board_part, turn_part, castling_part, ep_part, half_part, full_part = parts
         
+        self.pieces = ['.'] * 64
+        
         # Parse board
         index = 0
         for char in board_part:

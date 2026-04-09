@@ -132,17 +132,17 @@ def get_pseudo_legal_moves(board):
                     
         if p.lower() == 'k':
             if us == 'w':
-                if 'K' in board.castling and board.pieces[61] == '.' and board.pieces[62] == '.':
+                if 'K' in board.castling and board.pieces[63] == 'R' and board.pieces[61] == '.' and board.pieces[62] == '.':
                     if not is_attacked(board, 60, 'b') and not is_attacked(board, 61, 'b') and not is_attacked(board, 62, 'b'):
                         moves.append((60, 62, None))
-                if 'Q' in board.castling and board.pieces[59] == '.' and board.pieces[58] == '.' and board.pieces[57] == '.':
+                if 'Q' in board.castling and board.pieces[56] == 'R' and board.pieces[59] == '.' and board.pieces[58] == '.' and board.pieces[57] == '.':
                     if not is_attacked(board, 60, 'b') and not is_attacked(board, 59, 'b') and not is_attacked(board, 58, 'b'):
                         moves.append((60, 58, None))
             else:
-                if 'k' in board.castling and board.pieces[5] == '.' and board.pieces[6] == '.':
+                if 'k' in board.castling and board.pieces[7] == 'r' and board.pieces[5] == '.' and board.pieces[6] == '.':
                     if not is_attacked(board, 4, 'w') and not is_attacked(board, 5, 'w') and not is_attacked(board, 6, 'w'):
                         moves.append((4, 6, None))
-                if 'q' in board.castling and board.pieces[3] == '.' and board.pieces[2] == '.' and board.pieces[1] == '.':
+                if 'q' in board.castling and board.pieces[0] == 'r' and board.pieces[3] == '.' and board.pieces[2] == '.' and board.pieces[1] == '.':
                     if not is_attacked(board, 4, 'w') and not is_attacked(board, 3, 'w') and not is_attacked(board, 2, 'w'):
                         moves.append((4, 2, None))
 
