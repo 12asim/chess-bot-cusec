@@ -30,8 +30,8 @@ class ChessBot:
             
         self.board.apply_move(move_tuple)
         
-    def move(self, depth=2):
-        best = search(self.board, depth=depth)
+    def move(self, depth=2, time_limit=None):
+        best = search(self.board, depth=depth, time_limit=time_limit)
         if best is None:
             return None
             
