@@ -121,6 +121,8 @@ def evaluate(board):
     endgame = material_val <= 2000
     w_bishops = 0
     b_bishops = 0
+    w_king_sq = -1
+    b_king_sq = -1
     
     # Pawn structure
     for f in range(8):
@@ -174,6 +176,8 @@ def evaluate(board):
         elif pt == 'q':
             score += color_sign * get_mob(board, sq, True, R_WAYS + B_WAYS) * 1
         elif pt == 'k':
+            if is_white: w_king_sq = sq
+            else: b_king_sq = sq
             if endgame:
                 score += color_sign * PST_K_EG[idx]
             else:
@@ -188,4 +192,14 @@ def evaluate(board):
     if w_bishops >= 2: score += 30
     if b_bishops >= 2: score -= 30
     
+    if endgame:
+        if score > 400:
+            cmd = max(3 - (b_king_sq//8), b_king_sq//8 - 4) + max(3 - (b_king_sq%8), b_king_sq%8 - 4)
+            md = abs(w_king_sq//8 - b_king_sq//8) + abs(w_king_sq%8 - b_king_sq%8)
+            score += cmd * 10 + (14 - md) * 4
+        elif score < -400:
+            cmd = max(3 - (w_king_sq//8), w_king_sq//8 - 4) + max(3 - (w_king_sq%8), w_king_sq%8 - 4)
+            md = abs(w_king_sq//8 - b_king_sq//8) + abs(w_king_sq%8 - b_king_sq%8)
+            score -= cmd * 10 + (14 - md) * 4
+            
     return score
