@@ -135,10 +135,15 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     
     if maximizing:
         max_eval = -float('inf')
-        for move in moves:
+        for i, move in enumerate(moves):
             undo = board.make_move(move)
             try:
-                _, eval_score = alphabeta(board, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
+                if i == 0:
+                    _, eval_score = alphabeta(board, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
+                else:
+                    _, eval_score = alphabeta(board, depth - 1, alpha, alpha + 1, False, ply + 1, None, start_time, time_limit)
+                    if alpha < eval_score < beta:
+                        _, eval_score = alphabeta(board, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
             finally:
                 board.unmake_move(move, undo)
             if eval_score > max_eval:
@@ -164,10 +169,15 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
         return best_move, max_eval
     else:
         min_eval = float('inf')
-        for move in moves:
+        for i, move in enumerate(moves):
             undo = board.make_move(move)
             try:
-                _, eval_score = alphabeta(board, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
+                if i == 0:
+                    _, eval_score = alphabeta(board, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
+                else:
+                    _, eval_score = alphabeta(board, depth - 1, beta - 1, beta, True, ply + 1, None, start_time, time_limit)
+                    if alpha < eval_score < beta:
+                        _, eval_score = alphabeta(board, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
             finally:
                 board.unmake_move(move, undo)
             if eval_score < min_eval:
