@@ -193,6 +193,9 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
         return best_move, min_eval
 
 def search(board, depth=None, time_limit=None):
+    if board.is_draw():
+        return None
+        
     global TT, killers, history
     if len(TT) > 1000000:
         TT.clear()
