@@ -135,6 +135,20 @@ class TestChessBot(unittest.TestCase):
         move = bot.move(depth=1)
         self.assertIn(move, ["e7e5", "c7c5"])
 
+    def test_opening_book_extended(self):
+        bot = ChessBot()
+        bot.update('d2d4')
+        bot.update('g8f6')
+        bot.update('c2c4')
+        move = bot.move(depth=1)
+        self.assertIn(move, ["e7e6", "g7g6"])
+        
+        bot2 = ChessBot()
+        bot2.update('e2e4')
+        bot2.update('c7c5')
+        move2 = bot2.move(depth=1)
+        self.assertIn(move2, ["g1f3", "b1c3"])
+
     def test_invalid_book_entry_ignored(self):
         import opening_book
         bot = ChessBot()
