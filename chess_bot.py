@@ -1,6 +1,7 @@
 from board import Board, START_FEN
 from move_generation import get_legal_moves
 from search import search
+from opening_book import get_book_move
 
 class ChessBot:
     def __init__(self, fen=START_FEN):
@@ -31,6 +32,10 @@ class ChessBot:
         self.board.apply_move(move_tuple)
         
     def move(self, depth=2, time_limit=None):
+        book_move = get_book_move(self.board)
+        if book_move:
+            return book_move
+            
         best = search(self.board, depth=depth, time_limit=time_limit)
         if best is None:
             return None

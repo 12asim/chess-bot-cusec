@@ -124,5 +124,31 @@ class TestChessBot(unittest.TestCase):
         self.assertEqual(perft(bot.board, 1), 20)
         self.assertEqual(perft(bot.board, 2), 400)
 
+    def test_opening_book_startpos(self):
+        bot = ChessBot()
+        move = bot.move(depth=1)
+        self.assertIn(move, ["e2e4", "d2d4"])
+        
+    def test_opening_book_reply(self):
+        bot = ChessBot()
+        bot.update('e2e4')
+        move = bot.move(depth=1)
+        self.assertIn(move, ["e7e5", "c7c5"])
+
+    def test_invalid_book_entry_ignored(self):
+        import opening_book
+        bot = ChessBot()
+        key = opening_book.get_book_key(bot.board)
+        original = opening_book.BOOK[key][:]
+        
+        # Force the book to only contain a very illegal move
+        opening_book.BOOK[key] = ["e1e8"]
+        move = bot.move(depth=1)
+        
+        self.assertNotEqual(move, "e1e8")
+        
+        # Restore
+        opening_book.BOOK[key] = original
+
 if __name__ == '__main__':
     unittest.main()
