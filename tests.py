@@ -109,20 +109,37 @@ class TestChessBot(unittest.TestCase):
         self.assertEqual(len(get_legal_moves(bot.board)), 0)
         self.assertIsNone(bot.move())
         
-    def test_perft_initial(self):
+    def helper_perft(self, board, depth):
         from move_generation import get_legal_moves
-        def perft(board, depth):
-            if depth == 0: return 1
-            nodes = 0
-            for m in get_legal_moves(board):
-                b2 = board.copy()
-                b2.apply_move(m)
-                nodes += perft(b2, depth - 1)
-            return nodes
-            
+        if depth == 0: return 1
+        nodes = 0
+        for m in get_legal_moves(board):
+            undo = board.make_move(m)
+            nodes += self.helper_perft(board, depth - 1)
+            board.unmake_move(m, undo)
+        return nodes
+
+    def test_perft_initial(self):
         bot = ChessBot()
-        self.assertEqual(perft(bot.board, 1), 20)
-        self.assertEqual(perft(bot.board, 2), 400)
+        self.assertEqual(self.helper_perft(bot.board, 1), 20)
+        self.assertEqual(self.helper_perft(bot.board, 2), 400)
+        self.assertEqual(self.helper_perft(bot.board, 3), 8902)
+        self.assertEqual(self.helper_perft(bot.board, 4), 197281)
+
+    def test_perft_kiwipete(self):
+        fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+        bot = ChessBot(fen=fen)
+        self.assertEqual(self.helper_perft(bot.board, 1), 48)
+        self.assertEqual(self.helper_perft(bot.board, 2), 2039)
+        self.assertEqual(self.helper_perft(bot.board, 3), 97862)
+
+    def test_perft_position3(self):
+        fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1"
+        bot = ChessBot(fen=fen)
+        self.assertEqual(self.helper_perft(bot.board, 1), 14)
+        self.assertEqual(self.helper_perft(bot.board, 2), 191)
+        self.assertEqual(self.helper_perft(bot.board, 3), 2812)
+        self.assertEqual(self.helper_perft(bot.board, 4), 43238)
 
     def test_opening_book_startpos(self):
         bot = ChessBot()
