@@ -153,8 +153,10 @@ def get_legal_moves(board):
     legals = []
     curr_turn = board.turn
     for m in moves:
-        b2 = board.copy()
-        b2.apply_move(m)
-        if not is_in_check(b2, curr_turn):
-            legals.append(m)
+        undo = board.make_move(m)
+        try:
+            if not is_in_check(board, curr_turn):
+                legals.append(m)
+        finally:
+            board.unmake_move(m, undo)
     return legals

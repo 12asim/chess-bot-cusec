@@ -38,10 +38,12 @@ def order_moves(board, moves, prev_best=None, ply=0):
                 elif killers[ply][1] == m: score += 4000
             score += history.get(m, 0)
             
-            b2 = board.copy()
-            b2.apply_move(m)
-            if is_in_check(b2, b2.turn):
-                score += 5000
+            undo = board.make_move(m)
+            try:
+                if is_in_check(board, board.turn):
+                    score += 5000
+            finally:
+                board.unmake_move(m, undo)
         return score
     return sorted(moves, key=move_score, reverse=True)
 
@@ -76,9 +78,11 @@ def quiescence(board, alpha, beta, maximizing, ply):
     if maximizing:
         max_eval = eval_score
         for move in q_moves:
-            b2 = board.copy()
-            b2.apply_move(move)
-            score = quiescence(b2, alpha, beta, False, ply + 1)
+            undo = board.make_move(move)
+            try:
+                score = quiescence(board, alpha, beta, False, ply + 1)
+            finally:
+                board.unmake_move(move, undo)
             max_eval = max(max_eval, score)
             alpha = max(alpha, score)
             if beta <= alpha:
@@ -87,9 +91,11 @@ def quiescence(board, alpha, beta, maximizing, ply):
     else:
         min_eval = eval_score
         for move in q_moves:
-            b2 = board.copy()
-            b2.apply_move(move)
-            score = quiescence(b2, alpha, beta, True, ply + 1)
+            undo = board.make_move(move)
+            try:
+                score = quiescence(board, alpha, beta, True, ply + 1)
+            finally:
+                board.unmake_move(move, undo)
             min_eval = min(min_eval, score)
             beta = min(beta, score)
             if beta <= alpha:
@@ -134,9 +140,11 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     if maximizing:
         max_eval = -float('inf')
         for move in moves:
-            b2 = board.copy()
-            b2.apply_move(move)
-            _, eval_score = alphabeta(b2, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
+            undo = board.make_move(move)
+            try:
+                _, eval_score = alphabeta(board, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
+            finally:
+                board.unmake_move(move, undo)
             if eval_score > max_eval:
                 max_eval = eval_score
                 best_move = move
@@ -161,9 +169,11 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     else:
         min_eval = float('inf')
         for move in moves:
-            b2 = board.copy()
-            b2.apply_move(move)
-            _, eval_score = alphabeta(b2, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
+            undo = board.make_move(move)
+            try:
+                _, eval_score = alphabeta(board, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
+            finally:
+                board.unmake_move(move, undo)
             if eval_score < min_eval:
                 min_eval = eval_score
                 best_move = move
