@@ -37,13 +37,6 @@ def order_moves(board, moves, prev_best=None, ply=0):
                 if killers[ply][0] == m: score += 5000
                 elif killers[ply][1] == m: score += 4000
             score += history.get(m, 0)
-            
-            undo = board.make_move(m)
-            try:
-                if is_in_check(board, board.turn):
-                    score += 5000
-            finally:
-                board.unmake_move(m, undo)
         return score
     return sorted(moves, key=move_score, reverse=True)
 

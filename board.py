@@ -95,14 +95,11 @@ class Board:
         piece = self.pieces[start]
         captured = self.pieces[end]
         
-        undo = {
-            'castling': self.castling,
-            'ep_square': self.ep_square,
-            'halfmove': self.halfmove,
-            'fullmove': self.fullmove,
-            'captured': captured,
-            'ep_sq': -1
-        }
+        old_castling = self.castling
+        old_ep_square = self.ep_square
+        old_halfmove = self.halfmove
+        old_fullmove = self.fullmove
+        ep_sq = -1
         
         if piece.lower() == 'p' or captured != '.':
             self.halfmove = 0
@@ -111,10 +108,10 @@ class Board:
             
         if piece.lower() == 'p' and end == self.ep_square:
             if piece == 'P':
-                undo['ep_sq'] = end + 8
+                ep_sq = end + 8
                 self.pieces[end + 8] = '.'
             else:
-                undo['ep_sq'] = end - 8
+                ep_sq = end - 8
                 self.pieces[end - 8] = '.'
                 
         self.pieces[end] = self.pieces[start]
@@ -154,7 +151,7 @@ class Board:
         else:
             self.turn = 'b'
             
-        return undo
+        return (old_castling, old_ep_square, old_halfmove, old_fullmove, captured, ep_sq)
 
     def unmake_move(self, move_tuple, undo):
         start, end, promo = move_tuple
@@ -164,20 +161,17 @@ class Board:
         else:
             self.turn = 'w'
             
-        self.castling = undo['castling']
-        self.ep_square = undo['ep_square']
-        self.halfmove = undo['halfmove']
-        self.fullmove = undo['fullmove']
+        self.castling, self.ep_square, self.halfmove, self.fullmove, captured, ep_sq = undo
         
         piece = self.pieces[end]
         if promo:
             piece = 'P' if self.turn == 'w' else 'p'
             
         self.pieces[start] = piece
-        self.pieces[end] = undo['captured']
+        self.pieces[end] = captured
         
-        if undo['ep_sq'] != -1:
-            self.pieces[undo['ep_sq']] = 'p' if self.turn == 'w' else 'P'
+        if ep_sq != -1:
+            self.pieces[ep_sq] = 'p' if self.turn == 'w' else 'P'
             
         if piece.lower() == 'k' and abs(start - end) == 2:
             if end == 62:
