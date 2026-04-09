@@ -121,11 +121,40 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     if depth == 0:
         return None, quiescence(board, alpha, beta, maximizing, ply)
         
+    in_check = is_in_check(board, board.turn)
+    
     moves = get_legal_moves(board)
     if not moves:
-        if is_in_check(board, board.turn):
+        if in_check:
             return None, (-90000 + ply) if maximizing else (90000 - ply)
         return None, 0
+        
+    if depth >= 3 and not in_check and board.halfmove < 90:
+        has_pieces = False
+        pieces = board.pieces.values() if isinstance(board.pieces, dict) else board.pieces
+        for p in pieces:
+            if p != '.' and p.lower() not in ['p', 'k']:
+                if (board.turn == 'w' and p.isupper()) or (board.turn == 'b' and p.islower()):
+                    has_pieces = True
+                    break
+                    
+        if has_pieces:
+            old_turn = board.turn
+            old_ep = board.ep_square
+            board.turn = 'b' if old_turn == 'w' else 'w'
+            board.ep_square = -1
+            try:
+                if maximizing:
+                    _, null_score = alphabeta(board, depth - 3, beta - 1, beta, False, ply + 1, None, start_time, time_limit)
+                    if null_score >= beta:
+                        return None, beta
+                else:
+                    _, null_score = alphabeta(board, depth - 3, alpha, alpha + 1, True, ply + 1, None, start_time, time_limit)
+                    if null_score <= alpha:
+                        return None, alpha
+            finally:
+                board.turn = old_turn
+                board.ep_square = old_ep
         
     moves = order_moves(board, moves, tt_best_move or prev_best, ply)
     
