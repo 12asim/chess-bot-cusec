@@ -165,14 +165,26 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     if maximizing:
         max_eval = -float('inf')
         for i, move in enumerate(moves):
+            is_ep = board.pieces[move[1]] == '.' and move[1] == board.ep_square and board.pieces[move[0]].lower() == 'p'
+            is_capture = board.pieces[move[1]] != '.' or is_ep
+            is_promo = move[2] is not None
+            is_killer = ply < len(killers) and move in killers[ply]
+            do_lmr = depth >= 3 and i >= 3 and not in_check and not is_capture and not is_promo and not is_killer
+            
             undo = board.make_move(move)
             try:
                 if i == 0:
                     _, eval_score = alphabeta(board, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
                 else:
-                    _, eval_score = alphabeta(board, depth - 1, alpha, alpha + 1, False, ply + 1, None, start_time, time_limit)
-                    if alpha < eval_score < beta:
-                        _, eval_score = alphabeta(board, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
+                    needs_full = True
+                    if do_lmr:
+                        _, eval_score = alphabeta(board, depth - 2, alpha, alpha + 1, False, ply + 1, None, start_time, time_limit)
+                        needs_full = eval_score > alpha
+                        
+                    if needs_full:
+                        _, eval_score = alphabeta(board, depth - 1, alpha, alpha + 1, False, ply + 1, None, start_time, time_limit)
+                        if alpha < eval_score < beta:
+                            _, eval_score = alphabeta(board, depth - 1, alpha, beta, False, ply + 1, None, start_time, time_limit)
             finally:
                 board.unmake_move(move, undo)
             if eval_score > max_eval:
@@ -199,14 +211,26 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     else:
         min_eval = float('inf')
         for i, move in enumerate(moves):
+            is_ep = board.pieces[move[1]] == '.' and move[1] == board.ep_square and board.pieces[move[0]].lower() == 'p'
+            is_capture = board.pieces[move[1]] != '.' or is_ep
+            is_promo = move[2] is not None
+            is_killer = ply < len(killers) and move in killers[ply]
+            do_lmr = depth >= 3 and i >= 3 and not in_check and not is_capture and not is_promo and not is_killer
+            
             undo = board.make_move(move)
             try:
                 if i == 0:
                     _, eval_score = alphabeta(board, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
                 else:
-                    _, eval_score = alphabeta(board, depth - 1, beta - 1, beta, True, ply + 1, None, start_time, time_limit)
-                    if alpha < eval_score < beta:
-                        _, eval_score = alphabeta(board, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
+                    needs_full = True
+                    if do_lmr:
+                        _, eval_score = alphabeta(board, depth - 2, beta - 1, beta, True, ply + 1, None, start_time, time_limit)
+                        needs_full = eval_score < beta
+                        
+                    if needs_full:
+                        _, eval_score = alphabeta(board, depth - 1, beta - 1, beta, True, ply + 1, None, start_time, time_limit)
+                        if alpha < eval_score < beta:
+                            _, eval_score = alphabeta(board, depth - 1, alpha, beta, True, ply + 1, None, start_time, time_limit)
             finally:
                 board.unmake_move(move, undo)
             if eval_score < min_eval:
