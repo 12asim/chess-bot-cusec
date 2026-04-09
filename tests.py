@@ -150,5 +150,39 @@ class TestChessBot(unittest.TestCase):
         # Restore
         opening_book.BOOK[key] = original
 
+    def test_make_unmake_roundtrip(self):
+        tests = [
+            # Normal
+            ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", (52, 36, None)), # e2e4
+            # Capture
+            ("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2", (28, 19, None)), # e4xd5
+            # En Passant
+            ("k7/8/8/3pP3/8/8/8/K7 w - d6 0 1", (28, 19, None)), # e5xd6 ep
+            # Castling Kingside
+            ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", (60, 62, None)), # e1g1
+            # Castling Queenside
+            ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", (60, 58, None)), # e1c1
+            # Promotion
+            ("8/P7/8/8/8/8/8/k6K w - - 0 1", (8, 0, 'Q')), # a7a8q
+            # Black Castling Kingside
+            ("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1", (4, 6, None)),
+            # Black Castling Queenside
+            ("r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1", (4, 2, None)),
+            # Black Promotion
+            ("8/8/8/8/8/8/p7/k6K b - - 0 1", (48, 56, 'q')),
+            # Capture home rook (affects castling rights directly)
+            ("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1", (60, 0, None))
+        ]
+        
+        for fen, m in tests:
+            bot = ChessBot(fen)
+            orig_fen = bot.to_fen()
+            orig_tt = bot.board.get_tt_key()
+            undo = bot.board.make_move(m)
+            self.assertNotEqual(bot.to_fen(), orig_fen)
+            bot.board.unmake_move(m, undo)
+            self.assertEqual(bot.to_fen(), orig_fen)
+            self.assertEqual(bot.board.get_tt_key(), orig_tt)
+
 if __name__ == '__main__':
     unittest.main()

@@ -90,13 +90,19 @@ class Board:
     def get_tt_key(self):
         return (tuple(self.pieces), self.turn, self.castling, self.ep_square)
 
-    def apply_move(self, move_tuple):
+    def make_move(self, move_tuple):
         start, end, promo = move_tuple
         piece = self.pieces[start]
         captured = self.pieces[end]
         
-        # Prevent completely invalid calls
-        if piece == '.': return
+        undo = {
+            'castling': self.castling,
+            'ep_square': self.ep_square,
+            'halfmove': self.halfmove,
+            'fullmove': self.fullmove,
+            'captured': captured,
+            'ep_sq': -1
+        }
         
         if piece.lower() == 'p' or captured != '.':
             self.halfmove = 0
@@ -105,8 +111,10 @@ class Board:
             
         if piece.lower() == 'p' and end == self.ep_square:
             if piece == 'P':
+                undo['ep_sq'] = end + 8
                 self.pieces[end + 8] = '.'
             else:
+                undo['ep_sq'] = end - 8
                 self.pieces[end - 8] = '.'
                 
         self.pieces[end] = self.pieces[start]
@@ -145,3 +153,46 @@ class Board:
             self.turn = 'w'
         else:
             self.turn = 'b'
+            
+        return undo
+
+    def unmake_move(self, move_tuple, undo):
+        start, end, promo = move_tuple
+        
+        if self.turn == 'w':
+            self.turn = 'b'
+        else:
+            self.turn = 'w'
+            
+        self.castling = undo['castling']
+        self.ep_square = undo['ep_square']
+        self.halfmove = undo['halfmove']
+        self.fullmove = undo['fullmove']
+        
+        piece = self.pieces[end]
+        if promo:
+            piece = 'P' if self.turn == 'w' else 'p'
+            
+        self.pieces[start] = piece
+        self.pieces[end] = undo['captured']
+        
+        if undo['ep_sq'] != -1:
+            self.pieces[undo['ep_sq']] = 'p' if self.turn == 'w' else 'P'
+            
+        if piece.lower() == 'k' and abs(start - end) == 2:
+            if end == 62:
+                self.pieces[63] = self.pieces[61]
+                self.pieces[61] = '.'
+            elif end == 58:
+                self.pieces[56] = self.pieces[59]
+                self.pieces[59] = '.'
+            elif end == 6:
+                self.pieces[7] = self.pieces[5]
+                self.pieces[5] = '.'
+            elif end == 2:
+                self.pieces[0] = self.pieces[3]
+                self.pieces[3] = '.'
+
+    def apply_move(self, move_tuple):
+        if self.pieces[move_tuple[0]] == '.': return
+        self.make_move(move_tuple)
