@@ -99,6 +99,9 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     if time_limit and start_time and (time.time() - start_time) > time_limit:
         raise TimeOutException()
 
+    if ply > 0 and board.is_draw():
+        return None, 0
+
     tt_key = board.get_tt_key()
     tt_entry = TT.get(tt_key)
     tt_best_move = None

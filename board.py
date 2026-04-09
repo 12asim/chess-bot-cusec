@@ -39,6 +39,7 @@ class Board:
             
         self.halfmove = int(half_part)
         self.fullmove = int(full_part)
+        self.history = {self.get_tt_key(): 1}
 
     def to_fen(self):
         fen_board = []
@@ -85,6 +86,7 @@ class Board:
         new_board.ep_square = self.ep_square
         new_board.halfmove = self.halfmove
         new_board.fullmove = self.fullmove
+        new_board.history = self.history.copy()
         return new_board
 
     def get_tt_key(self):
@@ -151,9 +153,17 @@ class Board:
         else:
             self.turn = 'b'
             
+        k = self.get_tt_key()
+        self.history[k] = self.history.get(k, 0) + 1
+            
         return (old_castling, old_ep_square, old_halfmove, old_fullmove, captured, ep_sq)
 
     def unmake_move(self, move_tuple, undo):
+        k = self.get_tt_key()
+        self.history[k] -= 1
+        if self.history[k] == 0:
+            del self.history[k]
+            
         start, end, promo = move_tuple
         
         if self.turn == 'w':
@@ -190,3 +200,23 @@ class Board:
     def apply_move(self, move_tuple):
         if self.pieces[move_tuple[0]] == '.': return
         self.make_move(move_tuple)
+
+    def is_draw_by_repetition(self):
+        return self.history.get(self.get_tt_key(), 0) >= 3
+
+    def is_draw_by_50_move(self):
+        return self.halfmove >= 100
+
+    def is_insufficient_material(self):
+        counts = {'b': 0, 'n': 0, 'p': 0, 'r': 0, 'q': 0}
+        for p in self.pieces:
+            if p != '.' and p.lower() != 'k':
+                counts[p.lower()] += 1
+                
+        if counts['p'] > 0 or counts['r'] > 0 or counts['q'] > 0:
+            return False
+            
+        return (counts['b'] + counts['n']) <= 1
+
+    def is_draw(self):
+        return self.is_draw_by_repetition() or self.is_draw_by_50_move() or self.is_insufficient_material()

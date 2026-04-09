@@ -184,5 +184,60 @@ class TestChessBot(unittest.TestCase):
             self.assertEqual(bot.to_fen(), orig_fen)
             self.assertEqual(bot.board.get_tt_key(), orig_tt)
 
+    def test_draw_conditions(self):
+        # 50-move rule (halfmove = 100)
+        bot = ChessBot("8/8/8/8/8/8/8/k6K w - - 100 1")
+        self.assertTrue(bot.board.is_draw_by_50_move())
+        self.assertTrue(bot.board.is_draw())
+
+        # Insufficient material
+        tests_insuf = [
+            "8/8/8/8/8/8/8/k6K w - - 0 1", # K v K
+            "8/8/8/8/8/8/8/k6K b - - 0 1", # K v K
+            "8/8/8/8/8/8/8/kB5K w - - 0 1", # KB v K
+            "8/8/8/8/8/8/8/kN5K w - - 0 1"  # KN v K
+        ]
+        for f in tests_insuf:
+            self.assertTrue(ChessBot(f).board.is_insufficient_material())
+
+        # Sufficient material
+        tests_suf = [
+            "8/8/8/8/8/8/8/kR5K w - - 0 1", # KR v K
+            "8/8/8/8/8/8/8/kP5K w - - 0 1", # KP v K
+            "8/8/8/8/8/8/8/kBN4K w - - 0 1" # KBN v K
+        ]
+        for f in tests_suf:
+            self.assertFalse(ChessBot(f).board.is_insufficient_material())
+
+        # Threefold repetition and unmake tracking
+        bot = ChessBot("8/8/8/8/8/8/8/k6K w - - 0 1")
+        m1 = (63, 62, None) # Kh1-g1
+        m2 = (0, 1, None)   # Ka8-b8
+        m3 = (62, 63, None) # Kg1-h1
+        m4 = (1, 0, None)   # Kb8-a8
+        
+        # Move 1
+        u1 = bot.board.make_move(m1)
+        u2 = bot.board.make_move(m2)
+        # Move 2 (first repeat)
+        u3 = bot.board.make_move(m3)
+        u4 = bot.board.make_move(m4)
+        self.assertEqual(bot.board.history.get(bot.board.get_tt_key(), 0), 2)
+        self.assertFalse(bot.board.is_draw_by_repetition())
+        # Move 3 (second repeat)
+        u5 = bot.board.make_move(m1)
+        u6 = bot.board.make_move(m2)
+        u7 = bot.board.make_move(m3)
+        u8 = bot.board.make_move(m4)
+        
+        self.assertEqual(bot.board.history.get(bot.board.get_tt_key(), 0), 3)
+        self.assertTrue(bot.board.is_draw_by_repetition())
+        self.assertTrue(bot.board.is_draw())
+
+        # Test unmake tracking restoration
+        bot.board.unmake_move(m4, u8)
+        self.assertEqual(bot.board.history.get(bot.board.get_tt_key(), 0), 2)
+        self.assertFalse(bot.board.is_draw_by_repetition())
+
 if __name__ == '__main__':
     unittest.main()

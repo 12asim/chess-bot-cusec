@@ -13,6 +13,9 @@ class ChessBot:
     def __call__(self):
         return self.to_fen()
         
+    def is_draw(self):
+        return self.board.is_draw()
+        
     def update(self, uci_move):
         if len(uci_move) not in [4, 5]:
             raise ValueError(f"Invalid UCI move format: {uci_move}")

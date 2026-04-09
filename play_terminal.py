@@ -11,6 +11,13 @@ def print_board(board):
     print()
 
 def game_over_message(bot):
+    if bot.board.is_draw_by_repetition():
+        return "Draw by repetition."
+    if bot.board.is_draw_by_50_move():
+        return "Draw by 50-move rule."
+    if bot.board.is_insufficient_material():
+        return "Draw by insufficient material."
+
     legal_moves = get_legal_moves(bot.board)
     if legal_moves:
         return None
