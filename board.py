@@ -87,6 +87,9 @@ class Board:
         new_board.fullmove = self.fullmove
         return new_board
 
+    def get_tt_key(self):
+        return (tuple(self.pieces), self.turn, self.castling, self.ep_square)
+
     def apply_move(self, move_tuple):
         start, end, promo = move_tuple
         piece = self.pieces[start]
