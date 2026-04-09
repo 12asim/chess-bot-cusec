@@ -3,6 +3,8 @@ from move_generation import get_legal_moves, is_in_check
 from evaluation import evaluate
 
 TT = {}
+history = {}
+killers = [[None, None] for _ in range(100)]
 EXACT, LOWER, UPPER = 0, 1, 2
 
 def get_piece_value(p):
@@ -15,22 +17,31 @@ def get_piece_value(p):
     if p == 'k': return 20000
     return 0
 
-def order_moves(board, moves, prev_best=None):
+def order_moves(board, moves, prev_best=None, ply=0):
     def move_score(m):
         score = 0
         if m == prev_best:
             score += 100000
+            
         start, end, promo = m
         target = board.pieces[end]
-        if target != '.':
-            score += 10 * get_piece_value(target) - get_piece_value(board.pieces[start]) + 1000
+        is_ep = target == '.' and end == board.ep_square and board.pieces[start].lower() == 'p'
+        
+        if target != '.' or is_ep:
+            val = 100 if is_ep else get_piece_value(target)
+            score += 10 * val - get_piece_value(board.pieces[start]) + 10000
         elif promo:
-            score += get_piece_value(promo) + 800
+            score += get_piece_value(promo) + 8000
         else:
+            if ply < len(killers):
+                if killers[ply][0] == m: score += 5000
+                elif killers[ply][1] == m: score += 4000
+            score += history.get(m, 0)
+            
             b2 = board.copy()
             b2.apply_move(m)
             if is_in_check(b2, b2.turn):
-                score += 500
+                score += 5000
         return score
     return sorted(moves, key=move_score, reverse=True)
 
@@ -49,10 +60,17 @@ def quiescence(board, alpha, beta, maximizing, ply):
         beta = min(beta, eval_score)
         
     moves = get_legal_moves(board)
-    q_moves = [m for m in moves if board.pieces[m[1]] != '.' or m[2]]
+    q_moves = []
+    for m in moves:
+        is_ep = m[1] == board.ep_square and board.pieces[m[0]].lower() == 'p'
+        if board.pieces[m[1]] != '.' or m[2] or is_ep:
+            q_moves.append(m)
+            
     def q_score(m):
         if m[2]: return 900
-        return 10 * get_piece_value(board.pieces[m[1]]) - get_piece_value(board.pieces[m[0]])
+        val = 100 if board.pieces[m[1]] == '.' else get_piece_value(board.pieces[m[1]])
+        return 10 * val - get_piece_value(board.pieces[m[0]])
+        
     q_moves = sorted(q_moves, key=q_score, reverse=True)
     
     if maximizing:
@@ -107,7 +125,7 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
             return None, (-90000 + ply) if maximizing else (90000 - ply)
         return None, 0
         
-    moves = order_moves(board, moves, tt_best_move or prev_best)
+    moves = order_moves(board, moves, tt_best_move or prev_best, ply)
     
     best_move = moves[0]
     orig_alpha = alpha
@@ -124,6 +142,12 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
                 best_move = move
             alpha = max(alpha, eval_score)
             if beta <= alpha:
+                is_ep = board.pieces[move[1]] == '.' and move[1] == board.ep_square and board.pieces[move[0]].lower() == 'p'
+                if board.pieces[move[1]] == '.' and move[2] is None and not is_ep:
+                    if ply < len(killers) and killers[ply][0] != move:
+                        killers[ply][1] = killers[ply][0]
+                        killers[ply][0] = move
+                    history[move] = history.get(move, 0) + depth * depth
                 break
                 
         flag = EXACT
@@ -145,6 +169,12 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
                 best_move = move
             beta = min(beta, eval_score)
             if beta <= alpha:
+                is_ep = board.pieces[move[1]] == '.' and move[1] == board.ep_square and board.pieces[move[0]].lower() == 'p'
+                if board.pieces[move[1]] == '.' and move[2] is None and not is_ep:
+                    if ply < len(killers) and killers[ply][0] != move:
+                        killers[ply][1] = killers[ply][0]
+                        killers[ply][0] = move
+                    history[move] = history.get(move, 0) + depth * depth
                 break
                 
         flag = EXACT
@@ -157,10 +187,13 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
         return best_move, min_eval
 
 def search(board, depth=None, time_limit=None):
-    global TT
+    global TT, killers, history
     if len(TT) > 1000000:
         TT.clear()
         
+    killers = [[None, None] for _ in range(100)]
+    history = {}
+    
     if depth is None and time_limit is None:
         depth = 3
         
