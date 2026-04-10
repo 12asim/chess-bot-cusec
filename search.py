@@ -1,5 +1,5 @@
 import time
-from move_generation import get_legal_moves, is_in_check
+from move_generation import get_legal_moves, is_in_check, get_pseudo_legal_moves
 from evaluation import evaluate
 
 TT = {}
@@ -17,6 +17,27 @@ def get_piece_value(p):
     if p == 'k': return 20000
     return 0
 
+def see(board, move, is_root=True):
+    start, end, promo = move
+    target = board.pieces[end]
+    is_ep = target == '.' and end == board.ep_square and board.pieces[start].lower() == 'p'
+    
+    gain = 100 if is_ep else (get_piece_value(target) if target != '.' else 0)
+    if promo: gain += get_piece_value(promo) - 100
+    
+    undo = board.make_move(move)
+    try:
+        recaps = [m for m in get_pseudo_legal_moves(board) if m[1] == end]
+        if recaps:
+            best_recap = min(recaps, key=lambda m: get_piece_value(board.pieces[m[0]]))
+            opp_gain = see(board, best_recap, False)
+            if opp_gain > 0:
+                gain -= opp_gain
+    finally:
+        board.unmake_move(move, undo)
+        
+    return gain if is_root else max(0, gain)
+
 def order_moves(board, moves, prev_best=None, ply=0):
     def move_score(m):
         score = 0
@@ -28,8 +49,11 @@ def order_moves(board, moves, prev_best=None, ply=0):
         is_ep = target == '.' and end == board.ep_square and board.pieces[start].lower() == 'p'
         
         if target != '.' or is_ep:
-            val = 100 if is_ep else get_piece_value(target)
-            score += 10 * val - get_piece_value(board.pieces[start]) + 10000
+            s = see(board, m)
+            if s >= 0:
+                score += 10000 + s
+            else:
+                score += 2000 + s
         elif promo:
             score += get_piece_value(promo) + 8000
         else:
@@ -56,17 +80,16 @@ def quiescence(board, alpha, beta, maximizing, ply):
         
     moves = get_legal_moves(board)
     q_moves = []
+    
     for m in moves:
         is_ep = m[1] == board.ep_square and board.pieces[m[0]].lower() == 'p'
         if board.pieces[m[1]] != '.' or m[2] or is_ep:
-            q_moves.append(m)
-            
-    def q_score(m):
-        if m[2]: return 900
-        val = 100 if board.pieces[m[1]] == '.' else get_piece_value(board.pieces[m[1]])
-        return 10 * val - get_piece_value(board.pieces[m[0]])
-        
-    q_moves = sorted(q_moves, key=q_score, reverse=True)
+            s_val = see(board, m)
+            if s_val >= 0 or m[2]:
+                q_moves.append((m, s_val))
+                
+    q_moves.sort(key=lambda x: x[1], reverse=True)
+    q_moves = [x[0] for x in q_moves]
     
     if maximizing:
         max_eval = eval_score
