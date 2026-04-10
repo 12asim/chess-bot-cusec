@@ -100,25 +100,28 @@ def get_mob(board, sq, is_slide, ways):
     return m
 
 def evaluate(board):
-    score = 0
-    material_val = 0
+    mg_score = 0
+    eg_score = 0
     w_pawn_files = {f: [] for f in range(8)}
     b_pawn_files = {f: [] for f in range(8)}
+    
+    phase = 0
     
     for sq in range(64):
         p = board.pieces[sq]
         if p == '.': continue
         pt = p.lower()
-        if pt in ['n', 'b']: material_val += 300
-        elif pt == 'r': material_val += 500
-        elif pt == 'q': material_val += 900
+        if pt in ['n', 'b']: phase += 1
+        elif pt == 'r': phase += 2
+        elif pt == 'q': phase += 4
         
         file = sq % 8
         rank = sq // 8
         if p == 'P': w_pawn_files[file].append(rank)
         elif p == 'p': b_pawn_files[file].append(rank)
 
-    endgame = material_val <= 2000
+    phase = min(24, phase)
+
     w_bishops = 0
     b_bishops = 0
     w_king_sq = -1
@@ -129,70 +132,102 @@ def evaluate(board):
         wp = w_pawn_files[f]
         bp = b_pawn_files[f]
         
-        if len(wp) > 1: score -= 20 * (len(wp) - 1)
-        if len(bp) > 1: score += 20 * (len(bp) - 1)
+        if len(wp) > 1: 
+            mg_score -= 20 * (len(wp) - 1)
+            eg_score -= 20 * (len(wp) - 1)
+        if len(bp) > 1: 
+            mg_score += 20 * (len(bp) - 1)
+            eg_score += 20 * (len(bp) - 1)
         
         w_adj = (w_pawn_files[f-1] if f > 0 else []) + (w_pawn_files[f+1] if f < 7 else [])
-        if wp and not w_adj: score -= 20 * len(wp)
+        if wp and not w_adj: 
+            mg_score -= 20 * len(wp)
+            eg_score -= 20 * len(wp)
         
         b_adj = (b_pawn_files[f-1] if f > 0 else []) + (b_pawn_files[f+1] if f < 7 else [])
-        if bp and not b_adj: score += 20 * len(bp)
+        if bp and not b_adj: 
+            mg_score += 20 * len(bp)
+            eg_score += 20 * len(bp)
         
         for r in wp:
             if not [br for br in bp + b_adj if br < r]:
-                score += 10 + (7 - r) * 10
+                mg_score += 10 + (7 - r) * 10
+                eg_score += 20 + (7 - r) * 20
         for r in bp:
             if not [wr for wr in wp + w_adj if wr > r]:
-                score -= 10 + r * 10
+                mg_score -= 10 + r * 10
+                eg_score -= 20 + r * 20
 
     for sq in range(64):
         p = board.pieces[sq]
         if p == '.': continue
         
-        score += PIECE_VALUES[p]
+        val = PIECE_VALUES[p]
+        mg_score += val
+        eg_score += val
+        
         pt = p.lower()
         is_white = p.isupper()
         color_sign = 1 if is_white else -1
         idx = sq if is_white else 63 - sq
         
         if pt in PST:
-            score += color_sign * PST[pt][idx]
+            pst_val = PST[pt][idx]
+            mg_score += color_sign * pst_val
+            eg_score += color_sign * pst_val
             
         file = sq % 8
         if pt == 'n':
-            score += color_sign * get_mob(board, sq, False, N_WAYS) * 4
+            mob = get_mob(board, sq, False, N_WAYS) * 4
+            mg_score += color_sign * mob
+            eg_score += color_sign * mob
         elif pt == 'b':
-            score += color_sign * get_mob(board, sq, True, B_WAYS) * 3
+            mob = get_mob(board, sq, True, B_WAYS) * 3
+            mg_score += color_sign * mob
+            eg_score += color_sign * mob
             if is_white: w_bishops += 1
             else: b_bishops += 1
         elif pt == 'r':
-            score += color_sign * get_mob(board, sq, True, R_WAYS) * 2
+            mob = get_mob(board, sq, True, R_WAYS) * 2
+            mg_score += color_sign * mob
+            eg_score += color_sign * mob
             if is_white:
                 if not w_pawn_files[file]:
-                    score += 15 if b_pawn_files[file] else 25
+                    mg_score += 20 if b_pawn_files[file] else 35
+                    eg_score += 10 if b_pawn_files[file] else 15
             else:
                 if not b_pawn_files[file]:
-                    score -= 15 if w_pawn_files[file] else 25
+                    mg_score -= 20 if w_pawn_files[file] else 35
+                    eg_score -= 10 if w_pawn_files[file] else 15
         elif pt == 'q':
-            score += color_sign * get_mob(board, sq, True, R_WAYS + B_WAYS) * 1
+            mob = get_mob(board, sq, True, R_WAYS + B_WAYS) * 1
+            mg_score += color_sign * mob
+            eg_score += color_sign * mob
         elif pt == 'k':
             if is_white: w_king_sq = sq
             else: b_king_sq = sq
-            if endgame:
-                score += color_sign * PST_K_EG[idx]
-            else:
-                score += color_sign * PST_K_MG[idx]
-                shield = 0
-                for f2 in [file-1, file, file+1]:
-                    if 0 <= f2 < 8:
-                        if is_white and not w_pawn_files[f2]: shield -= 15
-                        if not is_white and not b_pawn_files[f2]: shield += 15
-                score += shield
+            
+            mg_score += color_sign * PST_K_MG[idx]
+            eg_score += color_sign * PST_K_EG[idx]
+            
+            shield = 0
+            for f2 in [file-1, file, file+1]:
+                if 0 <= f2 < 8:
+                    if is_white and not w_pawn_files[f2]: shield -= 20
+                    if not is_white and not b_pawn_files[f2]: shield += 20
+            
+            mg_score += shield
                 
-    if w_bishops >= 2: score += 30
-    if b_bishops >= 2: score -= 30
+    if w_bishops >= 2: 
+        mg_score += 30
+        eg_score += 30
+    if b_bishops >= 2: 
+        mg_score -= 30
+        eg_score -= 30
     
-    if endgame:
+    score = (mg_score * phase + eg_score * (24 - phase)) // 24
+    
+    if phase <= 6:
         if score > 400:
             cmd = max(3 - (b_king_sq//8), b_king_sq//8 - 4) + max(3 - (b_king_sq%8), b_king_sq%8 - 4)
             md = abs(w_king_sq//8 - b_king_sq//8) + abs(w_king_sq%8 - b_king_sq%8)
