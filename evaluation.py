@@ -106,6 +106,8 @@ def evaluate(board):
     b_pawn_files = {f: [] for f in range(8)}
     
     phase = 0
+    w_king_sq = -1
+    b_king_sq = -1
     
     for sq in range(64):
         p = board.pieces[sq]
@@ -119,13 +121,13 @@ def evaluate(board):
         rank = sq // 8
         if p == 'P': w_pawn_files[file].append(rank)
         elif p == 'p': b_pawn_files[file].append(rank)
+        elif p == 'K': w_king_sq = sq
+        elif p == 'k': b_king_sq = sq
 
     phase = min(24, phase)
 
     w_bishops = 0
     b_bishops = 0
-    w_king_sq = -1
-    b_king_sq = -1
     
     # Pawn structure
     for f in range(8):
@@ -153,10 +155,30 @@ def evaluate(board):
             if not [br for br in bp + b_adj if br < r]:
                 mg_score += 10 + (7 - r) * 10
                 eg_score += 20 + (7 - r) * 20
+                has_support = False
+                if f > 0:
+                    for adj_r in w_pawn_files[f-1]:
+                        if abs(adj_r - r) <= 1: has_support = True
+                if f < 7:
+                    for adj_r in w_pawn_files[f+1]:
+                        if abs(adj_r - r) <= 1: has_support = True
+                if has_support:
+                    mg_score += 15
+                    eg_score += 30
         for r in bp:
             if not [wr for wr in wp + w_adj if wr > r]:
                 mg_score -= 10 + r * 10
                 eg_score -= 20 + r * 20
+                has_support = False
+                if f > 0:
+                    for adj_r in b_pawn_files[f-1]:
+                        if abs(adj_r - r) <= 1: has_support = True
+                if f < 7:
+                    for adj_r in b_pawn_files[f+1]:
+                        if abs(adj_r - r) <= 1: has_support = True
+                if has_support:
+                    mg_score -= 15
+                    eg_score -= 30
 
     for sq in range(64):
         p = board.pieces[sq]
@@ -177,10 +199,37 @@ def evaluate(board):
             eg_score += color_sign * pst_val
             
         file = sq % 8
+        rank = sq // 8
+        
         if pt == 'n':
             mob = get_mob(board, sq, False, N_WAYS) * 4
             mg_score += color_sign * mob
             eg_score += color_sign * mob
+            
+            if is_white:
+                r_front = rank + 1
+                supported = (file > 0 and r_front in w_pawn_files[file-1]) or (file < 7 and r_front in w_pawn_files[file+1])
+                if supported:
+                    mg_score += 15
+                    eg_score += 5
+                    safe = True
+                    if file > 0 and any(br < rank for br in b_pawn_files[file-1]): safe = False
+                    if file < 7 and any(br < rank for br in b_pawn_files[file+1]): safe = False
+                    if safe:
+                        mg_score += 20
+                        eg_score += 10
+            else:
+                r_front = rank - 1
+                supported = (file > 0 and r_front in b_pawn_files[file-1]) or (file < 7 and r_front in b_pawn_files[file+1])
+                if supported:
+                    mg_score -= 15
+                    eg_score -= 5
+                    safe = True
+                    if file > 0 and any(wr > rank for wr in w_pawn_files[file-1]): safe = False
+                    if file < 7 and any(wr > rank for wr in w_pawn_files[file+1]): safe = False
+                    if safe:
+                        mg_score -= 20
+                        eg_score -= 10
         elif pt == 'b':
             mob = get_mob(board, sq, True, B_WAYS) * 3
             mg_score += color_sign * mob
@@ -195,18 +244,23 @@ def evaluate(board):
                 if not w_pawn_files[file]:
                     mg_score += 20 if b_pawn_files[file] else 35
                     eg_score += 10 if b_pawn_files[file] else 15
+                if rank == 1:
+                    if b_king_sq // 8 <= 1 or any(1 in b_pawn_files[f] for f in range(8)) or any(2 in b_pawn_files[f] for f in range(8)):
+                        mg_score += 20
+                        eg_score += 25
             else:
                 if not b_pawn_files[file]:
                     mg_score -= 20 if w_pawn_files[file] else 35
                     eg_score -= 10 if w_pawn_files[file] else 15
+                if rank == 6:
+                    if w_king_sq // 8 >= 6 or any(6 in w_pawn_files[f] for f in range(8)) or any(5 in w_pawn_files[f] for f in range(8)):
+                        mg_score -= 20
+                        eg_score -= 25
         elif pt == 'q':
             mob = get_mob(board, sq, True, R_WAYS + B_WAYS) * 1
             mg_score += color_sign * mob
             eg_score += color_sign * mob
         elif pt == 'k':
-            if is_white: w_king_sq = sq
-            else: b_king_sq = sq
-            
             mg_score += color_sign * PST_K_MG[idx]
             eg_score += color_sign * PST_K_EG[idx]
             
