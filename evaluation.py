@@ -99,7 +99,43 @@ def get_mob(board, sq, is_slide, ways):
             nr += dr; nc += dc
     return m
 
+def get_attacks(board):
+    w_att = [0] * 64
+    b_att = [0] * 64
+    for sq in range(64):
+        p = board.pieces[sq]
+        if p == '.': continue
+        is_w = p.isupper()
+        att = w_att if is_w else b_att
+        pt = p.lower()
+        r, c = sq // 8, sq % 8
+        if pt == 'p':
+            dr = -1 if is_w else 1
+            if 0 <= r + dr < 8:
+                if c > 0: att[(r+dr)*8 + c-1] += 1
+                if c < 7: att[(r+dr)*8 + c+1] += 1
+        elif pt == 'n':
+            for dr, dc in N_WAYS:
+                nr, nc = r+dr, c+dc
+                if 0 <= nr < 8 and 0 <= nc < 8: att[nr*8 + nc] += 1
+        elif pt == 'k':
+            for dr, dc in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)]:
+                nr, nc = r+dr, c+dc
+                if 0 <= nr < 8 and 0 <= nc < 8: att[nr*8 + nc] += 1
+        else:
+            ways = []
+            if pt in ['b', 'q']: ways.extend(B_WAYS)
+            if pt in ['r', 'q']: ways.extend(R_WAYS)
+            for dr, dc in ways:
+                nr, nc = r+dr, c+dc
+                while 0 <= nr < 8 and 0 <= nc < 8:
+                    att[nr*8 + nc] += 1
+                    if board.pieces[nr*8 + nc] != '.': break
+                    nr += dr; nc += dc
+    return w_att, b_att
+
 def evaluate(board):
+    w_att, b_att = get_attacks(board)
     mg_score = 0
     eg_score = 0
     w_pawn_files = {f: [] for f in range(8)}
@@ -226,6 +262,25 @@ def evaluate(board):
         color_sign = 1 if is_white else -1
         idx = sq if is_white else 63 - sq
         
+        val_abs = abs(val)
+        if pt != 'k':
+            if is_white:
+                if b_att[sq] > 0:
+                    if w_att[sq] == 0:
+                        mg_score -= val_abs // 10
+                        eg_score -= val_abs // 10
+                    elif val_abs > 100:
+                        mg_score -= 10
+                        eg_score -= 10
+            else:
+                if w_att[sq] > 0:
+                    if b_att[sq] == 0:
+                        mg_score += val_abs // 10
+                        eg_score += val_abs // 10
+                    elif val_abs > 100:
+                        mg_score += 10
+                        eg_score += 10
+        
         if pt in PST:
             pst_val = PST[pt][idx]
             mg_score += color_sign * pst_val
@@ -312,6 +367,16 @@ def evaluate(board):
                     if not is_white and not b_pawn_files[f2]: shield += 20
             
             mg_score += shield
+
+            kz_attacks = 0
+            for dr, dc in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1), (0,0)]:
+                nr, nc = rank+dr, file+dc
+                if 0 <= nr < 8 and 0 <= nc < 8:
+                    if is_white: kz_attacks += b_att[nr*8 + nc]
+                    else: kz_attacks += w_att[nr*8 + nc]
+            
+            if is_white: mg_score -= kz_attacks * 5
+            else: mg_score += kz_attacks * 5
                 
     if w_bishops >= 2: 
         mg_score += 30
