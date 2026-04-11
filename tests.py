@@ -143,28 +143,59 @@ class TestChessBot(unittest.TestCase):
 
     def test_opening_book_startpos(self):
         bot = ChessBot()
+        import opening_book
+        from move_generation import get_legal_moves
+        
+        legal_moves = [bot.board.square_to_str(m[0]) + bot.board.square_to_str(m[1]) + (m[2] or '') for m in get_legal_moves(bot.board)]
+        key = opening_book.get_book_key(bot.board)
+        allowed_moves = [entry[0] for entry in opening_book.BOOK[key]]
+        
         move = bot.move(depth=1)
-        self.assertIn(move, ["e2e4", "d2d4"])
+        self.assertIn(move, allowed_moves)
+        self.assertIn(move, legal_moves)
         
     def test_opening_book_reply(self):
         bot = ChessBot()
         bot.update('e2e4')
+        import opening_book
+        from move_generation import get_legal_moves
+        
+        legal_moves = [bot.board.square_to_str(m[0]) + bot.board.square_to_str(m[1]) + (m[2] or '') for m in get_legal_moves(bot.board)]
+        key = opening_book.get_book_key(bot.board)
+        allowed_moves = [entry[0] for entry in opening_book.BOOK[key]]
+        
         move = bot.move(depth=1)
-        self.assertIn(move, ["e7e5", "c7c5"])
+        self.assertIn(move, allowed_moves)
+        self.assertIn(move, legal_moves)
 
     def test_opening_book_extended(self):
+        import opening_book
+        from move_generation import get_legal_moves
+        
         bot = ChessBot()
         bot.update('d2d4')
         bot.update('g8f6')
         bot.update('c2c4')
+        
+        legal_moves = [bot.board.square_to_str(m[0]) + bot.board.square_to_str(m[1]) + (m[2] or '') for m in get_legal_moves(bot.board)]
+        key = opening_book.get_book_key(bot.board)
+        allowed_moves = [entry[0] for entry in opening_book.BOOK[key]]
+        
         move = bot.move(depth=1)
-        self.assertIn(move, ["e7e6", "g7g6"])
+        self.assertIn(move, allowed_moves)
+        self.assertIn(move, legal_moves)
         
         bot2 = ChessBot()
         bot2.update('e2e4')
         bot2.update('c7c5')
+        
+        legal_moves2 = [bot2.board.square_to_str(m[0]) + bot2.board.square_to_str(m[1]) + (m[2] or '') for m in get_legal_moves(bot2.board)]
+        key2 = opening_book.get_book_key(bot2.board)
+        allowed_moves2 = [entry[0] for entry in opening_book.BOOK[key2]]
+        
         move2 = bot2.move(depth=1)
-        self.assertIn(move2, ["g1f3", "b1c3"])
+        self.assertIn(move2, allowed_moves2)
+        self.assertIn(move2, legal_moves2)
 
     def test_invalid_book_entry_ignored(self):
         import opening_book
@@ -172,8 +203,8 @@ class TestChessBot(unittest.TestCase):
         key = opening_book.get_book_key(bot.board)
         original = opening_book.BOOK[key][:]
         
-        # Force the book to only contain a very illegal move
-        opening_book.BOOK[key] = ["e1e8"]
+        # Force the book to only contain a very illegal move with 100 weight
+        opening_book.BOOK[key] = [("e1e8", 100)]
         move = bot.move(depth=1)
         
         self.assertNotEqual(move, "e1e8")
