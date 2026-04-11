@@ -39,18 +39,40 @@ def main():
         side = "w"
 
     clock_text = input("Game clock in seconds (leave empty for depth-based): ").strip()
-    clock = float(clock_text) if clock_text else None
-    
+    clock = None
+    if clock_text:
+        try:
+            clock = float(clock_text)
+        except ValueError:
+            print("Invalid clock input, falling back to depth mode.")
+            clock = None
+            
     if clock is not None:
         increment_text = input("Increment in seconds (default 0): ").strip()
-        increment = float(increment_text) if increment_text else 0.0
+        increment = 0.0
+        if increment_text:
+            try:
+                increment = float(increment_text)
+            except ValueError:
+                print("Invalid increment input, using 0.0.")
+                increment = 0.0
         depth = 2
     else:
         depth_text = input("Bot search depth (default 2): ").strip()
-        depth = int(depth_text) if depth_text.isdigit() and int(depth_text) > 0 else 2
+        depth = 2
+        if depth_text:
+            try:
+                depth = int(depth_text)
+                if depth <= 0:
+                    print("Invalid depth input, using default 2.")
+                    depth = 2
+            except ValueError:
+                print("Invalid depth input, using default 2.")
+                depth = 2
         increment = 0.0
 
     bot = ChessBot()
+    clock_states = [clock]
 
     while True:
         print_board(bot.board)
@@ -86,20 +108,28 @@ def main():
                 if len(bot.move_history) >= 2:
                     bot.undo_last_move()
                     bot.undo_last_move()
+                    clock_states.pop()
+                    clock_states.pop()
+                    clock = clock_states[-1]
                 elif len(bot.move_history) == 1:
                     bot.undo_last_move()
+                    clock_states.pop()
+                    clock = clock_states[-1]
                 else:
                     print("Nothing to undo.")
                 continue
             elif user_input == "undo1":
                 if len(bot.move_history) >= 1:
                     bot.undo_last_move()
+                    clock_states.pop()
+                    clock = clock_states[-1]
                 else:
                     print("Nothing to undo.")
                 continue
 
             try:
                 bot.update(user_input)
+                clock_states.append(clock)
             except Exception as e:
                 print("Invalid move:", e)
         else:
@@ -123,6 +153,7 @@ def main():
                 break
             print(f"Bot plays: {bot_move}")
             bot.update(bot_move)
+            clock_states.append(clock)
 
 if __name__ == "__main__":
     main()
