@@ -129,6 +129,9 @@ def evaluate(board):
     w_bishops = 0
     b_bishops = 0
     
+    w_passed = []
+    b_passed = []
+    
     # Pawn structure
     for f in range(8):
         wp = w_pawn_files[f]
@@ -153,8 +156,14 @@ def evaluate(board):
         
         for r in wp:
             if not [br for br in bp + b_adj if br < r]:
-                mg_score += 10 + (7 - r) * 10
-                eg_score += 20 + (7 - r) * 20
+                w_passed.append((r, f))
+                adv = 7 - r
+                mg_score += 10 + adv * 10
+                eg_score += 10 + adv * 30 + (adv * adv * 2)
+                
+                outside = abs(f - 3.5)
+                eg_score += int(outside * 15)
+                
                 has_support = False
                 if f > 0:
                     for adj_r in w_pawn_files[f-1]:
@@ -164,11 +173,17 @@ def evaluate(board):
                         if abs(adj_r - r) <= 1: has_support = True
                 if has_support:
                     mg_score += 15
-                    eg_score += 30
+                    eg_score += 50
         for r in bp:
             if not [wr for wr in wp + w_adj if wr > r]:
-                mg_score -= 10 + r * 10
-                eg_score -= 20 + r * 20
+                b_passed.append((r, f))
+                adv = r
+                mg_score -= 10 + adv * 10
+                eg_score -= 10 + adv * 30 + (adv * adv * 2)
+                
+                outside = abs(f - 3.5)
+                eg_score -= int(outside * 15)
+                
                 has_support = False
                 if f > 0:
                     for adj_r in b_pawn_files[f-1]:
@@ -178,7 +193,25 @@ def evaluate(board):
                         if abs(adj_r - r) <= 1: has_support = True
                 if has_support:
                     mg_score -= 15
-                    eg_score -= 30
+                    eg_score -= 50
+
+    if w_king_sq != -1:
+        w_king_r, w_king_f = w_king_sq // 8, w_king_sq % 8
+        for pr, pf in w_passed:
+            dist = max(abs(w_king_r - pr), abs(w_king_f - pf))
+            eg_score += (7 - dist) * 5
+        for pr, pf in b_passed:
+            dist = max(abs(w_king_r - pr), abs(w_king_f - pf))
+            eg_score += (7 - dist) * 8
+
+    if b_king_sq != -1:
+        b_king_r, b_king_f = b_king_sq // 8, b_king_sq % 8
+        for pr, pf in b_passed:
+            dist = max(abs(b_king_r - pr), abs(b_king_f - pf))
+            eg_score -= (7 - dist) * 5
+        for pr, pf in w_passed:
+            dist = max(abs(b_king_r - pr), abs(b_king_f - pf))
+            eg_score -= (7 - dist) * 8
 
     for sq in range(64):
         p = board.pieces[sq]
@@ -248,6 +281,10 @@ def evaluate(board):
                     if b_king_sq // 8 <= 1 or any(1 in b_pawn_files[f] for f in range(8)) or any(2 in b_pawn_files[f] for f in range(8)):
                         mg_score += 20
                         eg_score += 25
+                if any(pr < rank for pr, pf in w_passed if pf == file):
+                    eg_score += 25
+                if any(pr > rank for pr, pf in b_passed if pf == file):
+                    eg_score += 25
             else:
                 if not b_pawn_files[file]:
                     mg_score -= 20 if w_pawn_files[file] else 35
@@ -256,6 +293,10 @@ def evaluate(board):
                     if w_king_sq // 8 >= 6 or any(6 in w_pawn_files[f] for f in range(8)) or any(5 in w_pawn_files[f] for f in range(8)):
                         mg_score -= 20
                         eg_score -= 25
+                if any(pr > rank for pr, pf in b_passed if pf == file):
+                    eg_score -= 25
+                if any(pr < rank for pr, pf in w_passed if pf == file):
+                    eg_score -= 25
         elif pt == 'q':
             mob = get_mob(board, sq, True, R_WAYS + B_WAYS) * 1
             mg_score += color_sign * mob
