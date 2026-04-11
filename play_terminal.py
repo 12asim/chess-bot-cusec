@@ -1,5 +1,6 @@
 from chess_bot import ChessBot
 from move_generation import get_legal_moves, is_in_check
+import time
 
 def print_board(board):
     print()
@@ -37,8 +38,17 @@ def main():
     if side not in ("w", "b"):
         side = "w"
 
-    depth_text = input("Bot search depth (default 2): ").strip()
-    depth = int(depth_text) if depth_text.isdigit() and int(depth_text) > 0 else 2
+    clock_text = input("Game clock in seconds (leave empty for depth-based): ").strip()
+    clock = float(clock_text) if clock_text else None
+    
+    if clock is not None:
+        increment_text = input("Increment in seconds (default 0): ").strip()
+        increment = float(increment_text) if increment_text else 0.0
+        depth = 2
+    else:
+        depth_text = input("Bot search depth (default 2): ").strip()
+        depth = int(depth_text) if depth_text.isdigit() and int(depth_text) > 0 else 2
+        increment = 0.0
 
     bot = ChessBot()
 
@@ -93,7 +103,20 @@ def main():
             except Exception as e:
                 print("Invalid move:", e)
         else:
-            bot_move = bot.move(depth=depth)
+            if clock is not None:
+                allocated = bot.choose_time_limit(clock, increment)
+                print(f"Bot thinking for up to {allocated:.2f}s... (Clock: {clock:.2f}s)")
+                t0 = time.time()
+                bot_move = bot.move(time_limit=allocated)
+                elapsed = time.time() - t0
+                clock -= elapsed
+                clock += increment
+                if clock <= 0:
+                    print("Bot ran out of time! You win on time.")
+                    break
+            else:
+                bot_move = bot.move(depth=depth)
+
             if bot_move is None:
                 result = game_over_message(bot)
                 print(result if result else "No legal moves.")

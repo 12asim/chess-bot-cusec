@@ -43,10 +43,28 @@ class ChessBot:
             return True
         return False
 
+    def choose_time_limit(self, remaining_time, increment=0.0):
+        ply = len(self.move_history)
+        # Expect ~50 moves initially, dropping to 20 dynamically to accelerate late game without flagging
+        expected_moves = max(20, 50 - ply // 2)
+        
+        allocated = remaining_time / expected_moves
+        allocated += increment * 0.8
+        
+        allocated -= 0.1 # small fixed move overhead
+        
+        # never spend too much of the remaining clock on one move
+        allocated = min(allocated, remaining_time * 0.25)
+        
+        return max(0.1, allocated)
+
     def move(self, depth=2, time_limit=None):
         book_move = get_book_move(self.board)
         if book_move:
             return book_move
+            
+        if time_limit is not None:
+            depth = None
             
         best = search(self.board, depth=depth, time_limit=time_limit)
         if best is None:
