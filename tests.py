@@ -197,6 +197,36 @@ class TestChessBot(unittest.TestCase):
         self.assertIn(move2, allowed_moves2)
         self.assertIn(move2, legal_moves2)
 
+    def test_opening_book_deep_lines(self):
+        import opening_book
+        from move_generation import get_legal_moves
+        
+        # Test KID deep line
+        bot = ChessBot()
+        for m in ['d2d4', 'g8f6', 'c2c4', 'g7g6', 'b1c3', 'f8g7', 'e2e4']:
+            bot.update(m)
+            
+        legal_moves = [bot.board.square_to_str(m[0]) + bot.board.square_to_str(m[1]) + (m[2] or '') for m in get_legal_moves(bot.board)]
+        key = opening_book.get_book_key(bot.board)
+        allowed_moves = [entry[0] for entry in opening_book.BOOK[key]]
+        
+        move = bot.move(depth=1)
+        self.assertIn(move, allowed_moves)
+        self.assertIn(move, legal_moves)
+        
+        # Test Italian deep line
+        bot2 = ChessBot()
+        for m in ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'f8c5', 'c2c3', 'g8f6']:
+            bot2.update(m)
+            
+        legal_moves2 = [bot2.board.square_to_str(m[0]) + bot2.board.square_to_str(m[1]) + (m[2] or '') for m in get_legal_moves(bot2.board)]
+        key2 = opening_book.get_book_key(bot2.board)
+        allowed_moves2 = [entry[0] for entry in opening_book.BOOK[key2]]
+        
+        move2 = bot2.move(depth=1)
+        self.assertIn(move2, allowed_moves2)
+        self.assertIn(move2, legal_moves2)
+
     def test_invalid_book_entry_ignored(self):
         import opening_book
         bot = ChessBot()
