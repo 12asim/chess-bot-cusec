@@ -102,36 +102,35 @@ def get_mob(board, sq, is_slide, ways):
 def get_attacks(board):
     w_att = [0] * 64
     b_att = [0] * 64
-    for sq in range(64):
-        p = board.pieces[sq]
-        if p == '.': continue
+    for p, sqs in board.piece_lists.items():
         is_w = p.isupper()
         att = w_att if is_w else b_att
         pt = p.lower()
-        r, c = sq // 8, sq % 8
-        if pt == 'p':
-            dr = -1 if is_w else 1
-            if 0 <= r + dr < 8:
-                if c > 0: att[(r+dr)*8 + c-1] += 1
-                if c < 7: att[(r+dr)*8 + c+1] += 1
-        elif pt == 'n':
-            for dr, dc in N_WAYS:
-                nr, nc = r+dr, c+dc
-                if 0 <= nr < 8 and 0 <= nc < 8: att[nr*8 + nc] += 1
-        elif pt == 'k':
-            for dr, dc in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)]:
-                nr, nc = r+dr, c+dc
-                if 0 <= nr < 8 and 0 <= nc < 8: att[nr*8 + nc] += 1
-        else:
-            ways = []
-            if pt in ['b', 'q']: ways.extend(B_WAYS)
-            if pt in ['r', 'q']: ways.extend(R_WAYS)
-            for dr, dc in ways:
-                nr, nc = r+dr, c+dc
-                while 0 <= nr < 8 and 0 <= nc < 8:
-                    att[nr*8 + nc] += 1
-                    if board.pieces[nr*8 + nc] != '.': break
-                    nr += dr; nc += dc
+        for sq in sqs:
+            r, c = sq // 8, sq % 8
+            if pt == 'p':
+                dr = -1 if is_w else 1
+                if 0 <= r + dr < 8:
+                    if c > 0: att[(r+dr)*8 + c-1] += 1
+                    if c < 7: att[(r+dr)*8 + c+1] += 1
+            elif pt == 'n':
+                for dr, dc in N_WAYS:
+                    nr, nc = r+dr, c+dc
+                    if 0 <= nr < 8 and 0 <= nc < 8: att[nr*8 + nc] += 1
+            elif pt == 'k':
+                for dr, dc in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)]:
+                    nr, nc = r+dr, c+dc
+                    if 0 <= nr < 8 and 0 <= nc < 8: att[nr*8 + nc] += 1
+            else:
+                ways = []
+                if pt in ['b', 'q']: ways.extend(B_WAYS)
+                if pt in ['r', 'q']: ways.extend(R_WAYS)
+                for dr, dc in ways:
+                    nr, nc = r+dr, c+dc
+                    while 0 <= nr < 8 and 0 <= nc < 8:
+                        att[nr*8 + nc] += 1
+                        if board.pieces[nr*8 + nc] != '.': break
+                        nr += dr; nc += dc
     return w_att, b_att
 
 def evaluate(board):
@@ -147,24 +146,23 @@ def evaluate(board):
     w_king_sq = -1
     b_king_sq = -1
     
-    for sq in range(64):
-        p = board.pieces[sq]
-        if p == '.': continue
+    for p, sqs in board.piece_lists.items():
         pt = p.lower()
-        if pt in ['n', 'b']: phase += 1
-        elif pt == 'r': phase += 2
-        elif pt == 'q': phase += 4
+        if pt in ['n', 'b']: phase += len(sqs)
+        elif pt == 'r': phase += 2 * len(sqs)
+        elif pt == 'q': phase += 4 * len(sqs)
         
-        file = sq % 8
-        rank = sq // 8
-        if p == 'P': 
-            w_pawn_files[file].append(rank)
-            w_pawn_sq_color[(rank + file) % 2] += 1
-        elif p == 'p': 
-            b_pawn_files[file].append(rank)
-            b_pawn_sq_color[(rank + file) % 2] += 1
-        elif p == 'K': w_king_sq = sq
-        elif p == 'k': b_king_sq = sq
+        for sq in sqs:
+            file = sq % 8
+            rank = sq // 8
+            if p == 'P': 
+                w_pawn_files[file].append(rank)
+                w_pawn_sq_color[(rank + file) % 2] += 1
+            elif p == 'p': 
+                b_pawn_files[file].append(rank)
+                b_pawn_sq_color[(rank + file) % 2] += 1
+            elif p == 'K': w_king_sq = sq
+            elif p == 'k': b_king_sq = sq
 
     phase = min(24, phase)
 
@@ -260,150 +258,152 @@ def evaluate(board):
 
     for sq in range(64):
         file = sq % 8
-        rank = sq // 8
-        
         if 2 <= file <= 5: 
+            rank = sq // 8
             if rank <= 3:
                 if w_att[sq] > 0 and b_att[sq] == 0: w_space += 2
                 elif w_att[sq] > 0: w_space += 1
-            if rank >= 4:
+            elif rank >= 4:
                 if b_att[sq] > 0 and w_att[sq] == 0: b_space += 2
                 elif b_att[sq] > 0: b_space += 1
 
-        p = board.pieces[sq]
-        if p == '.': continue
-        
+    for p, sqs in board.piece_lists.items():
         val = PIECE_VALUES[p]
-        mg_score += val
-        eg_score += val
-        
         pt = p.lower()
         is_white = p.isupper()
         color_sign = 1 if is_white else -1
-        idx = sq if is_white else 63 - sq
-        
         val_abs = abs(val)
-        if pt != 'k':
-            if is_white:
-                if b_att[sq] > 0:
-                    if w_att[sq] == 0:
-                        mg_score -= val_abs // 10
-                        eg_score -= val_abs // 10
-                    elif val_abs > 100:
-                        mg_score -= 10
-                        eg_score -= 10
-            else:
-                if w_att[sq] > 0:
-                    if b_att[sq] == 0:
-                        mg_score += val_abs // 10
-                        eg_score += val_abs // 10
-                    elif val_abs > 100:
-                        mg_score += 10
-                        eg_score += 10
         
-        if pt in PST:
-            pst_val = PST[pt][idx]
-            mg_score += color_sign * pst_val
-            eg_score += color_sign * pst_val
+        for sq in sqs:
+            file = sq % 8
+            rank = sq // 8
             
-        if pt == 'n':
-            mob = get_mob(board, sq, False, N_WAYS) * 4
-            mg_score += color_sign * mob
-            eg_score += color_sign * mob
+            mg_score += val
+            eg_score += val
             
-            if is_white:
-                r_front = rank + 1
-                supported = (file > 0 and r_front in w_pawn_files[file-1]) or (file < 7 and r_front in w_pawn_files[file+1])
-                if supported:
-                    mg_score += 15
-                    eg_score += 5
-                    safe = True
-                    if file > 0 and any(br < rank for br in b_pawn_files[file-1]): safe = False
-                    if file < 7 and any(br < rank for br in b_pawn_files[file+1]): safe = False
-                    if safe:
-                        mg_score += 20
-                        eg_score += 10
-            else:
-                r_front = rank - 1
-                supported = (file > 0 and r_front in b_pawn_files[file-1]) or (file < 7 and r_front in b_pawn_files[file+1])
-                if supported:
-                    mg_score -= 15
-                    eg_score -= 5
-                    safe = True
-                    if file > 0 and any(wr > rank for wr in w_pawn_files[file-1]): safe = False
-                    if file < 7 and any(wr > rank for wr in w_pawn_files[file+1]): safe = False
-                    if safe:
-                        mg_score -= 20
-                        eg_score -= 10
-        elif pt == 'b':
-            mob = get_mob(board, sq, True, B_WAYS) * 3
-            mg_score += color_sign * mob
-            eg_score += color_sign * mob
+            idx = sq if is_white else 63 - sq
             
-            sq_color = (rank + file) % 2
-            if is_white:
-                w_bishops += 1
-                blocked_cnt = w_pawn_sq_color[sq_color]
-                mg_score -= blocked_cnt * 3
-                eg_score -= blocked_cnt * 4
-            else:
-                b_bishops += 1
-                blocked_cnt = b_pawn_sq_color[sq_color]
-                mg_score += blocked_cnt * 3
-                eg_score += blocked_cnt * 4
-        elif pt == 'r':
-            mob = get_mob(board, sq, True, R_WAYS) * 2
-            mg_score += color_sign * mob
-            eg_score += color_sign * mob
-            if is_white:
-                if not w_pawn_files[file]:
-                    mg_score += 20 if b_pawn_files[file] else 35
-                    eg_score += 10 if b_pawn_files[file] else 15
-                if rank == 1:
-                    if b_king_sq // 8 <= 1 or any(1 in b_pawn_files[f] for f in range(8)) or any(2 in b_pawn_files[f] for f in range(8)):
-                        mg_score += 20
+            if pt != 'k':
+                if is_white:
+                    if b_att[sq] > 0:
+                        if w_att[sq] == 0:
+                            mg_score -= val_abs // 10
+                            eg_score -= val_abs // 10
+                        elif val_abs > 100:
+                            mg_score -= 10
+                            eg_score -= 10
+                else:
+                    if w_att[sq] > 0:
+                        if b_att[sq] == 0:
+                            mg_score += val_abs // 10
+                            eg_score += val_abs // 10
+                        elif val_abs > 100:
+                            mg_score += 10
+                            eg_score += 10
+            
+            if pt in PST:
+                pst_val = PST[pt][idx]
+                mg_score += color_sign * pst_val
+                eg_score += color_sign * pst_val
+                
+            if pt == 'n':
+                mob = get_mob(board, sq, False, N_WAYS) * 4
+                mg_score += color_sign * mob
+                eg_score += color_sign * mob
+                
+                if is_white:
+                    r_front = rank + 1
+                    supported = (file > 0 and r_front in w_pawn_files[file-1]) or (file < 7 and r_front in w_pawn_files[file+1])
+                    if supported:
+                        mg_score += 15
+                        eg_score += 5
+                        safe = True
+                        if file > 0 and any(br < rank for br in b_pawn_files[file-1]): safe = False
+                        if file < 7 and any(br < rank for br in b_pawn_files[file+1]): safe = False
+                        if safe:
+                            mg_score += 20
+                            eg_score += 10
+                else:
+                    r_front = rank - 1
+                    supported = (file > 0 and r_front in b_pawn_files[file-1]) or (file < 7 and r_front in b_pawn_files[file+1])
+                    if supported:
+                        mg_score -= 15
+                        eg_score -= 5
+                        safe = True
+                        if file > 0 and any(wr > rank for wr in w_pawn_files[file-1]): safe = False
+                        if file < 7 and any(wr > rank for wr in w_pawn_files[file+1]): safe = False
+                        if safe:
+                            mg_score -= 20
+                            eg_score -= 10
+            elif pt == 'b':
+                mob = get_mob(board, sq, True, B_WAYS) * 3
+                mg_score += color_sign * mob
+                eg_score += color_sign * mob
+                
+                sq_color = (rank + file) % 2
+                if is_white:
+                    w_bishops += 1
+                    blocked_cnt = w_pawn_sq_color[sq_color]
+                    mg_score -= blocked_cnt * 3
+                    eg_score -= blocked_cnt * 4
+                else:
+                    b_bishops += 1
+                    blocked_cnt = b_pawn_sq_color[sq_color]
+                    mg_score += blocked_cnt * 3
+                    eg_score += blocked_cnt * 4
+            elif pt == 'r':
+                mob = get_mob(board, sq, True, R_WAYS) * 2
+                mg_score += color_sign * mob
+                eg_score += color_sign * mob
+                if is_white:
+                    if not w_pawn_files[file]:
+                        mg_score += 20 if b_pawn_files[file] else 35
+                        eg_score += 10 if b_pawn_files[file] else 15
+                    if rank == 1:
+                        if b_king_sq // 8 <= 1 or any(1 in b_pawn_files[f] for f in range(8)) or any(2 in b_pawn_files[f] for f in range(8)):
+                            mg_score += 20
+                            eg_score += 25
+                    if any(pr < rank for pr, pf in w_passed if pf == file):
                         eg_score += 25
-                if any(pr < rank for pr, pf in w_passed if pf == file):
-                    eg_score += 25
-                if any(pr > rank for pr, pf in b_passed if pf == file):
-                    eg_score += 25
-            else:
-                if not b_pawn_files[file]:
-                    mg_score -= 20 if w_pawn_files[file] else 35
-                    eg_score -= 10 if w_pawn_files[file] else 15
-                if rank == 6:
-                    if w_king_sq // 8 >= 6 or any(6 in w_pawn_files[f] for f in range(8)) or any(5 in w_pawn_files[f] for f in range(8)):
-                        mg_score -= 20
+                    if any(pr > rank for pr, pf in b_passed if pf == file):
+                        eg_score += 25
+                else:
+                    if not b_pawn_files[file]:
+                        mg_score -= 20 if w_pawn_files[file] else 35
+                        eg_score -= 10 if w_pawn_files[file] else 15
+                    if rank == 6:
+                        if w_king_sq // 8 >= 6 or any(6 in w_pawn_files[f] for f in range(8)) or any(5 in w_pawn_files[f] for f in range(8)):
+                            mg_score -= 20
+                            eg_score -= 25
+                    if any(pr > rank for pr, pf in b_passed if pf == file):
                         eg_score -= 25
-                if any(pr > rank for pr, pf in b_passed if pf == file):
-                    eg_score -= 25
-                if any(pr < rank for pr, pf in w_passed if pf == file):
-                    eg_score -= 25
-        elif pt == 'q':
-            mob = get_mob(board, sq, True, R_WAYS + B_WAYS) * 1
-            mg_score += color_sign * mob
-            eg_score += color_sign * mob
-        elif pt == 'k':
-            mg_score += color_sign * PST_K_MG[idx]
-            eg_score += color_sign * PST_K_EG[idx]
-            
-            shield = 0
-            for f2 in [file-1, file, file+1]:
-                if 0 <= f2 < 8:
-                    if is_white and not w_pawn_files[f2]: shield -= 20
-                    if not is_white and not b_pawn_files[f2]: shield += 20
-            
-            mg_score += shield
-
-            kz_attacks = 0
-            for dr, dc in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1), (0,0)]:
-                nr, nc = rank+dr, file+dc
-                if 0 <= nr < 8 and 0 <= nc < 8:
-                    if is_white: kz_attacks += b_att[nr*8 + nc]
-                    else: kz_attacks += w_att[nr*8 + nc]
-            
-            if is_white: mg_score -= kz_attacks * 5
-            else: mg_score += kz_attacks * 5
+                    if any(pr < rank for pr, pf in w_passed if pf == file):
+                        eg_score -= 25
+            elif pt == 'q':
+                mob = get_mob(board, sq, True, R_WAYS + B_WAYS) * 1
+                mg_score += color_sign * mob
+                eg_score += color_sign * mob
+            elif pt == 'k':
+                mg_score += color_sign * PST_K_MG[idx]
+                eg_score += color_sign * PST_K_EG[idx]
+                
+                shield = 0
+                for f2 in [file-1, file, file+1]:
+                    if 0 <= f2 < 8:
+                        if is_white and not w_pawn_files[f2]: shield -= 20
+                        if not is_white and not b_pawn_files[f2]: shield += 20
+                
+                mg_score += shield
+    
+                kz_attacks = 0
+                for dr, dc in [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1), (0,0)]:
+                    nr, nc = rank+dr, file+dc
+                    if 0 <= nr < 8 and 0 <= nc < 8:
+                        if is_white: kz_attacks += b_att[nr*8 + nc]
+                        else: kz_attacks += w_att[nr*8 + nc]
+                
+                if is_white: mg_score -= kz_attacks * 5
+                else: mg_score += kz_attacks * 5
                 
     mg_score += w_space * 2
     mg_score -= b_space * 2

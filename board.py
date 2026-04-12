@@ -18,6 +18,7 @@ class Board:
         board_part, turn_part, castling_part, ep_part, half_part, full_part = parts
         
         self.pieces = ['.'] * 64
+        self.piece_lists = {p: [] for p in "PNBRQKpnbrqk"}
         
         # Parse board
         index = 0
@@ -28,6 +29,7 @@ class Board:
                 index += int(char)
             else:
                 self.pieces[index] = char
+                self.piece_lists[char].append(index)
                 index += 1
                 
         self.turn = turn_part
@@ -87,6 +89,7 @@ class Board:
         new_board.halfmove = self.halfmove
         new_board.fullmove = self.fullmove
         new_board.history = self.history.copy()
+        new_board.piece_lists = {p: lst[:] for p, lst in self.piece_lists.items()}
         return new_board
 
     def get_tt_key(self):
@@ -108,32 +111,49 @@ class Board:
         else:
             self.halfmove += 1
             
+        self.piece_lists[piece].remove(start)
+        if captured != '.':
+            self.piece_lists[captured].remove(end)
+
         if piece.lower() == 'p' and end == self.ep_square:
             if piece == 'P':
                 ep_sq = end + 8
                 self.pieces[end + 8] = '.'
+                self.piece_lists['p'].remove(end + 8)
             else:
                 ep_sq = end - 8
                 self.pieces[end - 8] = '.'
+                self.piece_lists['P'].remove(end - 8)
                 
         self.pieces[end] = self.pieces[start]
         self.pieces[start] = '.'
         if promo:
             self.pieces[end] = promo
+            self.piece_lists[promo].append(end)
+        else:
+            self.piece_lists[piece].append(end)
             
         if piece.lower() == 'k' and abs(start - end) == 2:
             if end == 62:
                 self.pieces[61] = self.pieces[63]
                 self.pieces[63] = '.'
+                self.piece_lists['R'].remove(63)
+                self.piece_lists['R'].append(61)
             elif end == 58:
                 self.pieces[59] = self.pieces[56]
                 self.pieces[56] = '.'
+                self.piece_lists['R'].remove(56)
+                self.piece_lists['R'].append(59)
             elif end == 6:
                 self.pieces[5] = self.pieces[7]
                 self.pieces[7] = '.'
+                self.piece_lists['r'].remove(7)
+                self.piece_lists['r'].append(5)
             elif end == 2:
                 self.pieces[3] = self.pieces[0]
                 self.pieces[0] = '.'
+                self.piece_lists['r'].remove(0)
+                self.piece_lists['r'].append(3)
         
         self.ep_square = -1
         if piece.lower() == 'p' and abs(start - end) == 16:
@@ -175,27 +195,45 @@ class Board:
         
         piece = self.pieces[end]
         if promo:
-            piece = 'P' if self.turn == 'w' else 'p'
+            orig_piece = 'P' if self.turn == 'w' else 'p'
+            self.piece_lists[piece].remove(end)
+            self.piece_lists[orig_piece].append(start)
+            piece = orig_piece
+        else:
+            self.piece_lists[piece].remove(end)
+            self.piece_lists[piece].append(start)
             
         self.pieces[start] = piece
         self.pieces[end] = captured
+        if captured != '.':
+            self.piece_lists[captured].append(end)
         
         if ep_sq != -1:
-            self.pieces[ep_sq] = 'p' if self.turn == 'w' else 'P'
+            ep_p = 'p' if self.turn == 'w' else 'P'
+            self.pieces[ep_sq] = ep_p
+            self.piece_lists[ep_p].append(ep_sq)
             
         if piece.lower() == 'k' and abs(start - end) == 2:
             if end == 62:
                 self.pieces[63] = self.pieces[61]
                 self.pieces[61] = '.'
+                self.piece_lists['R'].remove(61)
+                self.piece_lists['R'].append(63)
             elif end == 58:
                 self.pieces[56] = self.pieces[59]
                 self.pieces[59] = '.'
+                self.piece_lists['R'].remove(59)
+                self.piece_lists['R'].append(56)
             elif end == 6:
                 self.pieces[7] = self.pieces[5]
                 self.pieces[5] = '.'
+                self.piece_lists['r'].remove(5)
+                self.piece_lists['r'].append(7)
             elif end == 2:
                 self.pieces[0] = self.pieces[3]
                 self.pieces[3] = '.'
+                self.piece_lists['r'].remove(3)
+                self.piece_lists['r'].append(0)
 
     def apply_move(self, move_tuple):
         if self.pieces[move_tuple[0]] == '.': return

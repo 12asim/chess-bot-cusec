@@ -50,102 +50,98 @@ def is_attacked(board, sq, attacker_color):
 
 def is_in_check(board, color):
     k_char = 'K' if color == 'w' else 'k'
-    try:
-        k_pos = board.pieces.index(k_char)
-    except ValueError:
+    k_list = board.piece_lists[k_char]
+    if not k_list:
         return False
-    return is_attacked(board, k_pos, 'b' if color == 'w' else 'w')
+    return is_attacked(board, k_list[0], 'b' if color == 'w' else 'w')
 
 def get_pseudo_legal_moves(board):
     moves = []
     us = board.turn
+    my_pieces = "PNBRQK" if us == 'w' else "pnbrqk"
     
-    for sq in range(64):
-        p = board.pieces[sq]
-        if p == '.': continue
-        if (us == 'w' and p.islower()) or (us == 'b' and p.isupper()):
-            continue
+    for pt in my_pieces:
+        for sq in board.piece_lists[pt]:
+            p = pt
+            row, col = sq // 8, sq % 8
             
-        row, col = sq // 8, sq % 8
-        
-        if p.lower() == 'p':
-            dir = -1 if us == 'w' else 1
-            start_rank = 6 if us == 'w' else 1
-            promo_rank = 0 if us == 'w' else 7
-            
-            fwd = sq + dir * 8
-            if 0 <= fwd < 64 and board.pieces[fwd] == '.':
-                if fwd // 8 == promo_rank:
-                    for pr in ['q', 'r', 'b', 'n']:
-                        moves.append((sq, fwd, pr.upper() if us == 'w' else pr))
-                else:
-                    moves.append((sq, fwd, None))
-                    if row == start_rank:
-                        fwd2 = fwd + dir * 8
-                        if board.pieces[fwd2] == '.':
-                            moves.append((sq, fwd2, None))
-                            
-            for dc in [-1, 1]:
-                if 0 <= col + dc < 8:
-                    cap_sq = sq + dir * 8 + dc
-                    if 0 <= cap_sq < 64:
-                        target = board.pieces[cap_sq]
-                        if target != '.' and ((us == 'w' and target.islower()) or (us == 'b' and target.isupper())):
-                            if cap_sq // 8 == promo_rank:
-                                for pr in ['q', 'r', 'b', 'n']:
-                                    moves.append((sq, cap_sq, pr.upper() if us == 'w' else pr))
-                            else:
+            if p.lower() == 'p':
+                dir = -1 if us == 'w' else 1
+                start_rank = 6 if us == 'w' else 1
+                promo_rank = 0 if us == 'w' else 7
+                
+                fwd = sq + dir * 8
+                if 0 <= fwd < 64 and board.pieces[fwd] == '.':
+                    if fwd // 8 == promo_rank:
+                        for pr in ['q', 'r', 'b', 'n']:
+                            moves.append((sq, fwd, pr.upper() if us == 'w' else pr))
+                    else:
+                        moves.append((sq, fwd, None))
+                        if row == start_rank:
+                            fwd2 = fwd + dir * 8
+                            if board.pieces[fwd2] == '.':
+                                moves.append((sq, fwd2, None))
+                                
+                for dc in [-1, 1]:
+                    if 0 <= col + dc < 8:
+                        cap_sq = sq + dir * 8 + dc
+                        if 0 <= cap_sq < 64:
+                            target = board.pieces[cap_sq]
+                            if target != '.' and ((us == 'w' and target.islower()) or (us == 'b' and target.isupper())):
+                                if cap_sq // 8 == promo_rank:
+                                    for pr in ['q', 'r', 'b', 'n']:
+                                        moves.append((sq, cap_sq, pr.upper() if us == 'w' else pr))
+                                else:
+                                    moves.append((sq, cap_sq, None))
+                            elif cap_sq == board.ep_square:
                                 moves.append((sq, cap_sq, None))
-                        elif cap_sq == board.ep_square:
+                                
+            elif p.lower() == 'n':
+                for dr, dc in [(-2,-1), (-2,1), (-1,-2), (-1,2), (1,-2), (1,2), (2,-1), (2,1)]:
+                    r, c = row+dr, col+dc
+                    if 0 <= r < 8 and 0 <= c < 8:
+                        cap_sq = r * 8 + c
+                        target_p = board.pieces[cap_sq]
+                        if target_p == '.' or ((us == 'w' and target_p.islower()) or (us == 'b' and target_p.isupper())):
                             moves.append((sq, cap_sq, None))
                             
-        elif p.lower() == 'n':
-            for dr, dc in [(-2,-1), (-2,1), (-1,-2), (-1,2), (1,-2), (1,2), (2,-1), (2,1)]:
-                r, c = row+dr, col+dc
-                if 0 <= r < 8 and 0 <= c < 8:
-                    cap_sq = r * 8 + c
-                    target_p = board.pieces[cap_sq]
-                    if target_p == '.' or ((us == 'w' and target_p.islower()) or (us == 'b' and target_p.isupper())):
-                        moves.append((sq, cap_sq, None))
+            elif p.lower() in ['b', 'r', 'q', 'k']:
+                if p.lower() == 'b': rays = [(1,1), (1,-1), (-1,1), (-1,-1)]
+                elif p.lower() == 'r': rays = [(0,1), (0,-1), (1,0), (-1,0)]
+                elif p.lower() == 'q': rays = [(1,1), (1,-1), (-1,1), (-1,-1), (0,1), (0,-1), (1,0), (-1,0)]
+                elif p.lower() == 'k': rays = [(1,1), (1,-1), (-1,1), (-1,-1), (0,1), (0,-1), (1,0), (-1,0)]
+                
+                for dr, dc in rays:
+                    r, c = row+dr, col+dc
+                    while 0 <= r < 8 and 0 <= c < 8:
+                        cap_sq = r * 8 + c
+                        target_p = board.pieces[cap_sq]
+                        if target_p == '.':
+                            moves.append((sq, cap_sq, None))
+                        elif (us == 'w' and target_p.islower()) or (us == 'b' and target_p.isupper()):
+                            moves.append((sq, cap_sq, None))
+                            break
+                        else:
+                            break
+                        if p.lower() == 'k': break
+                        r += dr
+                        c += dc
                         
-        elif p.lower() in ['b', 'r', 'q', 'k']:
-            if p.lower() == 'b': rays = [(1,1), (1,-1), (-1,1), (-1,-1)]
-            elif p.lower() == 'r': rays = [(0,1), (0,-1), (1,0), (-1,0)]
-            elif p.lower() == 'q': rays = [(1,1), (1,-1), (-1,1), (-1,-1), (0,1), (0,-1), (1,0), (-1,0)]
-            elif p.lower() == 'k': rays = [(1,1), (1,-1), (-1,1), (-1,-1), (0,1), (0,-1), (1,0), (-1,0)]
-            
-            for dr, dc in rays:
-                r, c = row+dr, col+dc
-                while 0 <= r < 8 and 0 <= c < 8:
-                    cap_sq = r * 8 + c
-                    target_p = board.pieces[cap_sq]
-                    if target_p == '.':
-                        moves.append((sq, cap_sq, None))
-                    elif (us == 'w' and target_p.islower()) or (us == 'b' and target_p.isupper()):
-                        moves.append((sq, cap_sq, None))
-                        break
-                    else:
-                        break
-                    if p.lower() == 'k': break
-                    r += dr
-                    c += dc
-                    
-        if p.lower() == 'k':
-            if us == 'w':
-                if 'K' in board.castling and board.pieces[63] == 'R' and board.pieces[61] == '.' and board.pieces[62] == '.':
-                    if not is_attacked(board, 60, 'b') and not is_attacked(board, 61, 'b') and not is_attacked(board, 62, 'b'):
-                        moves.append((60, 62, None))
-                if 'Q' in board.castling and board.pieces[56] == 'R' and board.pieces[59] == '.' and board.pieces[58] == '.' and board.pieces[57] == '.':
-                    if not is_attacked(board, 60, 'b') and not is_attacked(board, 59, 'b') and not is_attacked(board, 58, 'b'):
-                        moves.append((60, 58, None))
-            else:
-                if 'k' in board.castling and board.pieces[7] == 'r' and board.pieces[5] == '.' and board.pieces[6] == '.':
-                    if not is_attacked(board, 4, 'w') and not is_attacked(board, 5, 'w') and not is_attacked(board, 6, 'w'):
-                        moves.append((4, 6, None))
-                if 'q' in board.castling and board.pieces[0] == 'r' and board.pieces[3] == '.' and board.pieces[2] == '.' and board.pieces[1] == '.':
-                    if not is_attacked(board, 4, 'w') and not is_attacked(board, 3, 'w') and not is_attacked(board, 2, 'w'):
-                        moves.append((4, 2, None))
-
+            if p.lower() == 'k':
+                if us == 'w':
+                    if 'K' in board.castling and board.pieces[63] == 'R' and board.pieces[61] == '.' and board.pieces[62] == '.':
+                        if not is_attacked(board, 60, 'b') and not is_attacked(board, 61, 'b') and not is_attacked(board, 62, 'b'):
+                            moves.append((60, 62, None))
+                    if 'Q' in board.castling and board.pieces[56] == 'R' and board.pieces[59] == '.' and board.pieces[58] == '.' and board.pieces[57] == '.':
+                        if not is_attacked(board, 60, 'b') and not is_attacked(board, 59, 'b') and not is_attacked(board, 58, 'b'):
+                            moves.append((60, 58, None))
+                else:
+                    if 'k' in board.castling and board.pieces[7] == 'r' and board.pieces[5] == '.' and board.pieces[6] == '.':
+                        if not is_attacked(board, 4, 'w') and not is_attacked(board, 5, 'w') and not is_attacked(board, 6, 'w'):
+                            moves.append((4, 6, None))
+                    if 'q' in board.castling and board.pieces[0] == 'r' and board.pieces[3] == '.' and board.pieces[2] == '.' and board.pieces[1] == '.':
+                        if not is_attacked(board, 4, 'w') and not is_attacked(board, 3, 'w') and not is_attacked(board, 2, 'w'):
+                            moves.append((4, 2, None))
     return moves
 
 def get_legal_moves(board):

@@ -247,7 +247,7 @@ class TestChessBot(unittest.TestCase):
             # Normal
             ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", (52, 36, None)), # e2e4
             # Capture
-            ("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2", (28, 19, None)), # e4xd5
+            ("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2", (36, 27, None)), # e4xd5
             # En Passant
             ("k7/8/8/3pP3/8/8/8/K7 w - d6 0 1", (28, 19, None)), # e5xd6 ep
             # Castling Kingside
@@ -302,7 +302,7 @@ class TestChessBot(unittest.TestCase):
             self.assertFalse(ChessBot(f).board.is_insufficient_material())
 
         # Threefold repetition and unmake tracking
-        bot = ChessBot("8/8/8/8/8/8/8/k6K w - - 0 1")
+        bot = ChessBot("k7/8/8/8/8/8/8/7K w - - 0 1")
         m1 = (63, 62, None) # Kh1-g1
         m2 = (0, 1, None)   # Ka8-b8
         m3 = (62, 63, None) # Kg1-h1
