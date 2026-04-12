@@ -125,6 +125,11 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
     if ply > 0 and board.is_draw():
         return None, 0
 
+    in_check = is_in_check(board, board.turn)
+    
+    if in_check and ply < 50:
+        depth += 1
+
     tt_key = board.get_tt_key()
     tt_entry = TT.get(tt_key)
     tt_best_move = None
@@ -141,11 +146,9 @@ def alphabeta(board, depth, alpha, beta, maximizing, ply, prev_best=None, start_
             if alpha >= beta:
                 return tt_best_move, tt_score
 
-    if depth == 0:
+    if depth <= 0:
         return None, quiescence(board, alpha, beta, maximizing, ply)
         
-    in_check = is_in_check(board, board.turn)
-    
     moves = get_legal_moves(board)
     if not moves:
         if in_check:
